@@ -1447,87 +1447,54 @@ async def adm(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 #=== aDm ===
 from telegram import Update
-from telegram.constants import ParseMode
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, MessageHandler, filters
 import re, random
 
-ADR_REGEX = r"https:\/\/t\.me\/c\/(\d+)\/(\d+)"
+SESSION = {}
+LINK_REGEX = r"https:\/\/t\.me\/c\/(\d+)\/(\d+)"
 
-async def adr_dm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def process_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
-        return await update.message.reply_text("❌ Use this command in bot DM only!")
-
-    if not await is_admin(update):
-        return await update.message.reply_text("❌ Unauthorized!")
-
-    if len(context.args) < 2:
-        return await update.message.reply_text("❌ Wrong format!")
-
-    message_link = context.args[0]
-    amount_str = context.args[1]
-
-    try:
-        amount = float(amount_str)
-    except:
-        return await update.message.reply_text("❌ Invalid amount!")
-
-    match = re.match(ADR_REGEX, message_link)
+        return
+    text = update.message.text
+    match = re.match(LINK_REGEX, text)
     if not match:
-        return await update.message.reply_text("❌ Invalid link!")
+        return
+    SESSION[update.effective_user.id] = text
+    await update.message.reply_text("Enter amount:")
 
-    chat_id = int(f"-100{match.group(1)}")
-    msg_id = int(match.group(2))
-
+async def process_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.type != "private":
+        return
+    user = update.effective_user.id
+    if user not in SESSION:
+        return
     try:
-        chat = await context.bot.get_chat(chat_id)
-        deal_msg = await chat.get_message(msg_id)
-    except Exception as e:
-        return await update.message.reply_text("❌ Fetch failed!")
+        amount = float(update.message.text)
+    except:
+        return await update.message.reply_text("Invalid amount. Try again.")
 
-    text = deal_msg.text or deal_msg.caption or ""
+    remaining = round(amount * 0.98, 2)
+    ref_id = f"#REF{random.randint(100000,999999)}"
 
-    buyer = "Unknown"
-    seller = "Unknown"
+    buyer = "@GolgiBody"
+    seller = "@AGuyWithRose"
 
-    for line in text.splitlines():
-        L = line.strip().lower()
-        if L.startswith("buyer"):
-            buyer = line.split(":", 1)[1].strip()
-        if L.startswith("seller"):
-            seller = line.split(":", 1)[1].strip()
+    SESSION.pop(user)
 
-    fee = round(amount * 0.03, 2)
-    final_amount = round(amount - fee, 2)
+    msg = f"""
+💰 Recorded Amount : ${amount:.2f}
+📤 Estimated Remaining : ${remaining:.2f}
+🆔 Reference ID: {ref_id}
 
-    trade_id = f"TID{random.randint(100000, 999999)}"
+Continue the Process ✅
+Buyer : {buyer}
+Seller : {seller}
 
-    deals_col.insert_one({
-        "buyer": buyer,
-        "seller": seller,
-        "amount": amount,
-        "released_amount": final_amount,
-        "fee_amount": fee,
-        "fee": 3,
-        "trade_id": trade_id,
-        "status": "pending",
-        "from_link": message_link,
-        "original_chat_id": chat_id,
-        "original_msg_id": msg_id
-    })
+Logged By : @{update.effective_user.username}
+"""
+    await update.message.reply_text(msg.strip())
 
-    await update_escrower_stats(update.effective_user.id, float(amount))
-
-    output = (
-        f"💰 Received Amount : ${amount}\n"
-        f"📤 Release/Refund Amount : ${final_amount}\n"
-        f"🆔 Trade ID: #{trade_id}\n\n"
-        f"Continue the Deal\n"
-        f"Buyer : {buyer}\n"
-        f"Seller : {seller}\n\n"
-        f"🛡️ Escrowed By : @{update.effective_user.username}"
-    )
-
-    return await update.message.reply_text(output, parse_mode="HTML")
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -1555,6 +1522,9 @@ def main():
     app.add_handler(CommandHandler("refund", refund_deal))
     app.add_handler(CommandHandler("adm", adm))
     app.add_handler(CommandHandler("adr", adr_dm))
+    app.add_handler(MessageHandler(filters.Entity("url") & filters.TEXT, process_link))
+    app.add_handler(MessageHandler(filters.TEXT, process_amount))
+
     
     confirmation_handler = MessageHandler(
         filters.Regex(r"(?i)\b(release|relese|refund)\b") & ~filters.COMMAND,
