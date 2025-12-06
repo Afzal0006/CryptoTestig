@@ -1521,7 +1521,6 @@ def main():
     app.add_handler(CallbackQueryHandler(fee_button_handler, pattern="^fee"))
     app.add_handler(CommandHandler("refund", refund_deal))
     app.add_handler(CommandHandler("adm", adm))
-    app.add_handler(CommandHandler("adr", adr_dm))
     app.add_handler(MessageHandler(filters.Entity("url") & filters.TEXT, process_link))
     app.add_handler(MessageHandler(filters.TEXT, process_amount))
 
