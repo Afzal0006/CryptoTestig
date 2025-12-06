@@ -1446,13 +1446,14 @@ async def adm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 #=== aDm ===
-import re
-import random
+from telegram import Update
 from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
+import re, random
 
 ADM_REGEX = r"https:\/\/t\.me\/c\/(\d+)\/(\d+)"
 
-async def adm_dm(update: Update, context: CallbackContext):
+async def adm_dm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return await update.message.reply_text("❌ Use this command in bot DM only!")
 
