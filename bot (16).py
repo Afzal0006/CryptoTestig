@@ -1444,6 +1444,88 @@ async def adm(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_to_message_id=int(reply_id),
         parse_mode="HTML"
         )
+
+#=== aDm ===
+import re
+import random
+from telegram.constants import ParseMode
+
+ADM_REGEX = r"https:\/\/t\.me\/c\/(\d+)\/(\d+)"
+
+async def adm_dm(update: Update, context: CallbackContext):
+    if update.effective_chat.type != "private":
+        return await update.message.reply_text("❌ Use this command in bot DM only!")
+
+    if not await is_admin(update):
+        return await update.message.reply_text("❌ Unauthorized!")
+
+    if len(context.args) < 2:
+        return await update.message.reply_text("❌ Wrong format!")
+
+    message_link = context.args[0]
+    amount_str = context.args[1]
+
+    try:
+        amount = float(amount_str)
+    except:
+        return await update.message.reply_text("❌ Invalid amount!")
+
+    match = re.match(ADM_REGEX, message_link)
+    if not match:
+        return await update.message.reply_text("❌ Invalid link!")
+
+    chat_id = int(f"-100{match.group(1)}")
+    msg_id = int(match.group(2))
+
+    try:
+        deal_msg = await context.bot.get_messages(chat_id, msg_id)
+    except:
+        return await update.message.reply_text("❌ Fetch failed!")
+
+    text = deal_msg.text or deal_msg.caption or ""
+
+    buyer = "Unknown"
+    seller = "Unknown"
+
+    for line in text.splitlines():
+        L = line.strip().lower()
+        if L.startswith("buyer"):
+            buyer = line.split(":", 1)[1].strip()
+        if L.startswith("seller"):
+            seller = line.split(":", 1)[1].strip()
+
+    fee = round(amount * 0.03, 2)
+    final_amount = round(amount - fee, 2)
+
+    trade_id = f"TID{random.randint(100000, 999999)}"
+
+    deals_col.insert_one({
+        "buyer": buyer,
+        "seller": seller,
+        "amount": amount,
+        "released_amount": final_amount,
+        "fee_amount": fee,
+        "fee": 3,
+        "trade_id": trade_id,
+        "status": "pending",
+        "from_link": message_link,
+        "original_chat_id": chat_id,
+        "original_msg_id": msg_id
+    })
+
+    await update_escrower_stats(update.effective_user.id, float(amount))
+
+    output = (
+        f"💰 Received Amount : ${amount}\n"
+        f"📤 Release/Refund Amount : ${final_amount}\n"
+        f"🆔 Trade ID: #{trade_id}\n\n"
+        f"Continue the Deal\n"
+        f"Buyer : {buyer}\n"
+        f"Seller : {seller}\n\n"
+        f"🛡️ Escrowed By : @{update.effective_user.username}"
+    )
+
+    return await update.message.reply_text(output, parse_mode="HTML")
     
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
