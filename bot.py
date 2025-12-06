@@ -1451,9 +1451,9 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 import re, random
 
-ADM_REGEX = r"https:\/\/t\.me\/c\/(\d+)\/(\d+)"
+ADR_REGEX = r"https:\/\/t\.me\/c\/(\d+)\/(\d+)"
 
-async def adm_dm(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def adr_dm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return await update.message.reply_text("❌ Use this command in bot DM only!")
 
@@ -1471,7 +1471,7 @@ async def adm_dm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         return await update.message.reply_text("❌ Invalid amount!")
 
-    match = re.match(ADM_REGEX, message_link)
+    match = re.match(ADR_REGEX, message_link)
     if not match:
         return await update.message.reply_text("❌ Invalid link!")
 
@@ -1554,6 +1554,7 @@ def main():
     app.add_handler(CallbackQueryHandler(fee_button_handler, pattern="^fee"))
     app.add_handler(CommandHandler("refund", refund_deal))
     app.add_handler(CommandHandler("adm", adm))
+    app.add_handler(CommandHandler("adr", adr_dm))
     
     confirmation_handler = MessageHandler(
         filters.Regex(r"(?i)\b(release|relese|refund)\b") & ~filters.COMMAND,
