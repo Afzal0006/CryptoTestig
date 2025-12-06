@@ -1479,8 +1479,9 @@ async def adr_dm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg_id = int(match.group(2))
 
     try:
-        deal_msg = await context.bot.get_messages(chat_id, msg_id)
-    except:
+        chat = await context.bot.get_chat(chat_id)
+        deal_msg = await chat.get_message(msg_id)
+    except Exception as e:
         return await update.message.reply_text("❌ Fetch failed!")
 
     text = deal_msg.text or deal_msg.caption or ""
@@ -1527,7 +1528,6 @@ async def adr_dm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     return await update.message.reply_text(output, parse_mode="HTML")
-    
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
